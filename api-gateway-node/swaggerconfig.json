@@ -1,0 +1,46 @@
+{
+    "swagger": "2.0",
+    "info": {
+      "version": "1.0.0",
+      "title": "API Gateway",
+      "description": "Documentação da API Gateway"
+    },
+    "host": "localhost:3001",
+    "basePath": "/",
+    "schemes": ["http"],
+    "paths": {
+      "/times/": {
+        "get": {
+          "summary": "Lista os times",
+          "responses": {
+            "200": {
+              "description": "Lista os times"
+            }
+          }
+        },
+        "post": {
+          "summary": "Cria um time",
+          "parameters": [
+            {
+              "name": "body",
+              "in": "body",
+              "required": true,
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": { "type": "string" },
+                  "cidade": { "type": "string" },
+                  "estado": { "type": "string" }
+                }
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Autenticação realizada com sucesso"
+            }
+          }
+        }
+      }
+    }
+  }
