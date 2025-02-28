@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, Request, Response
+import pika
 import xmltodict
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
@@ -7,6 +8,10 @@ from models import Time, Base
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+RABBITMQ_URL = "amqp://guest:guest@localhost"
+QUEUE_NAME = "fila_do_pao"
+
 
 def get_db():
     db = SessionLocal()
@@ -21,12 +26,9 @@ def read_times(db: Session = Depends(get_db)):
      return db.query(Time).all()
 
 
-@app.post("/times/")
-async def read_item(request: Request):
+def create_time(xml_data):
    
     try:
-        xml_data = await request.body()
-        print(xml_data)
         converted_xml = xmltodict.parse(xml_data)
 
         body = converted_xml.get("soapenv:Envelope", {}).get("soapenv:Body", {})
@@ -42,15 +44,22 @@ async def read_item(request: Request):
         db.commit()
         db.close()
 
-        soap_response = f"""
-        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
-            <soapenv:Body>
-                <web:Response>
-                    <web:message>Success! Time {nome} registered.</web:message>
-                </web:Response>
-            </soapenv:Body>
-        </soapenv:Envelope>
-        """
-        return Response(content=soap_response, media_type="text/xml")
+        print("Time registrado!", nome)
     except Exception as e:
-        return Response(content="Error processing SOAP request", status_code=500)
+        print("deu erro")
+
+def consume_queue():
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+    channel = connection.channel()
+    channel.queue_declare(queue=QUEUE_NAME, durable=True)
+    
+    def callback(ch, method, properties, body):
+        print("Mensagem recebida!")
+        create_time(body.decode("utf-8"))
+
+    channel.basic_consume(queue=QUEUE_NAME, on_message_callback=callback, auto_ack=True)
+    print("Aguardando mensagens...")
+    channel.start_consuming() 
+
+if __name__ == "__main__":
+    consume_queue()
